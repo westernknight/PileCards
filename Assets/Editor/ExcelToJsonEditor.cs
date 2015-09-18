@@ -15,9 +15,10 @@ using UnityEngine;
 using System.Collections;
 using UnityEditor;
 using System.IO;
-using Excel;
-using System.Data;
+
 using System.Collections.Generic;
+using NPOI.HSSF.UserModel;
+using NPOI.SS.UserModel;
 public class ExcelToJsonEditor : EditorWindow
 {
 
@@ -46,28 +47,40 @@ public class ExcelToJsonEditor : EditorWindow
         EditorGUILayout.EndHorizontal();
         if (GUILayout.Button("Convert"))
         {
+
+
             string excelPathWithoutExtension = Path.GetFileNameWithoutExtension(excelPath) + "-copy.xls";
-            File.Copy(excelPath, excelPathWithoutExtension,true);
+            File.Copy(excelPath, excelPathWithoutExtension, true);
             FileStream stream = File.Open(excelPathWithoutExtension, FileMode.Open, FileAccess.Read);
 
-            IExcelDataReader exc = ExcelReaderFactory.CreateBinaryReader(stream);
+            HSSFWorkbook wk = new HSSFWorkbook(stream);
             stream.Close();
             File.Delete(excelPathWithoutExtension);
-            DataSet mResultSets = exc.AsDataSet();
 
+            ISheet sheet = wk.GetSheetAt(0);
 
-            Debug.Log("mResultSets.Tables[0].Columns.Count " + mResultSets.Tables[0].Columns.Count);
-            Debug.Log("mResultSets.Tables[0].Rows.Count " + mResultSets.Tables[0].Rows.Count);
-
+            Debug.Log("Rows count " + sheet.LastRowNum);
             LitJson.JsonData result = new LitJson.JsonData();
             result["buff"] = new LitJson.JsonData();
             List<string> keyName = new List<string>();
 
-            for (int j = 0; j < mResultSets.Tables[0].Rows.Count; j++)
+            for (int j = 0; j < sheet.LastRowNum; j++)
             {
                 if (j == 0)
                 {
-                    //first row is head brand
+                    for (int i = 0; i < sheet.GetRow(0).LastCellNum; i++)
+                    {
+                        ICell cell = sheet.GetRow(0).GetCell(i);
+                        if (cell!=null)
+                        {
+                            keyName.Add(cell.ToString());
+                        }
+                        else
+                        {
+                            keyName.Add("");
+                        }
+
+                    }
                 }
                 else
                 {
@@ -75,25 +88,28 @@ public class ExcelToJsonEditor : EditorWindow
                     //childJ["subBuff"] = new LitJson.JsonData();
                     for (int i = 0; i < keyName.Count; i++)
                     {
-                        childJ[keyName[i]] = mResultSets.Tables[0].Rows[j][i].ToString();
+                        ICell cell = sheet.GetRow(j).GetCell(i);//mResultSets.Tables[0].Rows[j][i].ToString();
+                        if (cell != null)
+                        {
+                            childJ[keyName[i]] = cell.ToString();
+                        }
+                        else
+                        {
+                            childJ[keyName[i]] = null;
+                        }
+                        
                     }
 
                     result["buff"].Add(childJ);
                 }
-                if (j == 0)
-                {
-                    for (int i = 0; i < mResultSets.Tables[0].Columns.Count; i++)
-                    {
-                        keyName.Add(mResultSets.Tables[0].Rows[j][i].ToString());
+               
 
-                    }
-                }
             }
-
             FileInfo jsonFile = new FileInfo(Path.GetFileNameWithoutExtension(excelPath) + ".json");
             StreamWriter sw = new StreamWriter(jsonFile.Create());
             sw.WriteLine(result.ToJson());
             sw.Close();
+
             StreamReader sr = new StreamReader(jsonFile.OpenRead());
             string buffDate = sr.ReadLine();
             sr.Close();
@@ -110,10 +126,12 @@ public class ExcelToJsonEditor : EditorWindow
                         LitJson.JsonData data = pa[i];
                         Debug.Log(item + " " + data[item]);
                     }
-                    Debug.Log("");
+                    Debug.Log("==================");
 
                 }
             }
+            return;
+
         }
     }
 }

@@ -43,6 +43,7 @@ public class testFileBrowser : MonoBehaviour {
 		fb.searchRecursively = GUILayout.Toggle(fb.searchRecursively,"Search Sub Folders");
 		GUILayout.EndVertical();
 		GUILayout.Space(10);
+    
 		GUILayout.Label("Selected File: "+output);
 		GUILayout.EndHorizontal();
 		//draw and display output

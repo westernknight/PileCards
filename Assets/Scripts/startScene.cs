@@ -52,48 +52,53 @@ public class startScene : MonoBehaviour {
         fb.showSearch = false;
         //search recursively (setting recursive search may cause a long delay)
         fb.searchRecursively = true;
-// 
-// 
-//         FileInfo jsonFile = new FileInfo(Path.GetFileNameWithoutExtension(excelPath) + ".json");
-//         StreamReader sr = new StreamReader(jsonFile.OpenRead());
-//         string buffDate = sr.ReadLine();
-//         sr.Close();
-// 
-//         LitJson.JsonData arguments = LitJson.JsonMapper.ToObject(buffDate);
-//         if (arguments["buff"].IsArray)
-//         {
-//             Debug.Log("array");
-//             LitJson.JsonData pa = arguments["buff"];
-//             for (int i = 0; i < pa.Count; i++)
-//             {
-//                 foreach (string item in ((IDictionary)(pa[i])).Keys)
-//                 {
-//                     LitJson.JsonData data = pa[i];
-//                     Debug.Log(item + " " + data[item]);
-//                 }
-//                 Debug.Log("");
-// 
-//             }
-//         }
+
+    }
+
+    void AnylizeJsonFile(string path)
+    {
+        if (Path.GetFileName(jsonFilePath).Contains(".json"))
+        {
+            FileInfo jsonFile = new FileInfo(jsonFilePath);
+            StreamReader sr = new StreamReader(jsonFile.OpenRead());
+            string buffDate = sr.ReadLine();
+            sr.Close();
+
+            LitJson.JsonData arguments = LitJson.JsonMapper.ToObject(buffDate);
+            if (arguments["buff"].IsArray)
+            {
+                LitJson.JsonData pa = arguments["buff"];
+                for (int i = 0; i < pa.Count; i++)
+                {
+                    foreach (string col in ((IDictionary)(pa[i])).Keys)
+                    {
+                        LitJson.JsonData data = pa[i];
+                        Debug.Log(col + " " + data[col]);
+                    }
+
+
+                }
+            }
+        }
+        
     }
     void OnGUI()
     {
         if (fb != null)
         {
-            fb.draw();
+     
+            if (fb.draw())
+            {
+                jsonFilePath = fb.outputFile.ToString();
+                AnylizeJsonFile(jsonFilePath);
+                fb = null;
+            }
+            
         }
     }
 	void Update()
 	{
-        if (fb !=null)
-        {
-            fb.draw();
-            if (fb.outputFile != null)
-            {
-                Debug.Log(fb.outputFile.ToString());
-            }
-        }
-        
+      
 
 		text.text = "Player Count: "+(Network.connections.Length+1).ToString();//server doesn't counted so +1;
 	}
