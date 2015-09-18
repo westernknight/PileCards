@@ -67,6 +67,7 @@ public class ExcelToJsonEditor : EditorWindow
             {
                 if (j == 0)
                 {
+                    //first row is head brand
                 }
                 else
                 {
@@ -93,13 +94,26 @@ public class ExcelToJsonEditor : EditorWindow
             StreamWriter sw = new StreamWriter(jsonFile.Create());
             sw.WriteLine(result.ToJson());
             sw.Close();
-
-
             StreamReader sr = new StreamReader(jsonFile.OpenRead());
             string buffDate = sr.ReadLine();
-
-
             sr.Close();
+            //read json
+            LitJson.JsonData arguments = LitJson.JsonMapper.ToObject(buffDate);
+            if (arguments["buff"].IsArray)
+            {
+                Debug.Log("array");
+                LitJson.JsonData pa = arguments["buff"];
+                for (int i = 0; i < pa.Count; i++)
+                {
+                    foreach (string item in ((IDictionary)(pa[i])).Keys)
+                    {
+                        LitJson.JsonData data = pa[i];
+                        Debug.Log(item + " " + data[item]);
+                    }
+                    Debug.Log("");
+
+                }
+            }
         }
     }
 }
