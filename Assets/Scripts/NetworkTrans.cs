@@ -26,6 +26,7 @@ public class NetworkTrans : MonoBehaviour {
 	{
 		instance = this;
 		serverPort = 10000;
+        Screen.SetResolution(960, 540,true);
 	}
 	void Start()
 	{
@@ -33,6 +34,7 @@ public class NetworkTrans : MonoBehaviour {
 		DontDestroyOnLoad(gameObject);
 
 	}
+    
 	public void StartServer()
 	{
 		NetworkConnectionError error = Network.InitializeServer(6, serverPort, true);

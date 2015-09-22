@@ -22,9 +22,8 @@ public class GameManager : MonoBehaviour
     NetworkView network;
     List<string> cardNames = new List<string>();
     List<int> pileCards = new List<int>();
+    List<int> outCardsHeap = new List<int>();
 
-    public int startCardCount = 5;
-    public int sendCardCount = 1;
     public static GameManager instance;
     public GameObject cardPrefab;
 
@@ -32,10 +31,13 @@ public class GameManager : MonoBehaviour
     GameObject outCardGrid;
 
     GameObject mainMenuButton;
+
+    CardData cardConfig;
     void Awake()
     {
         instance = this;
 
+        //demo
         cardNames.Add("a1");
         cardNames.Add("a2");
         cardNames.Add("a3");
@@ -56,53 +58,88 @@ public class GameManager : MonoBehaviour
         cardNames.Add("b8");
         cardNames.Add("b9");
 
+        cardConfig = CardData.instance;
 
     }
+    [RPC]
+    void InitCards(string json)
+    {
+        cardNames.Clear();
+        cardNames = LitJson.JsonMapper.ToObject<List<string>>(json);
+
+    }
+
     void Start()
     {
         network = GetComponent<NetworkView>();
+
+
+
+
         Debug.Log("i'am " + Network.player);
-   
-        for (int i = 0; i < cardNames.Count; i++)
-        {
-            pileCards.Add(i);
-        }
+
+
         mainMenuButton = GameObject.Find("mainMenuButton");
         handCardGrid = GameObject.Find("handCardGrid");
         outCardGrid = GameObject.Find("outCardGrid");
         mainMenuButton.SetActive(false);
+
+        if (CardData.instance.cardJsonData != null)
+        {
+            cardNames.Clear();
+            Debug.Log("load cards");
+            LitJson.JsonData pa = CardData.instance.cardJsonData;
+
+            for (int i = 0; i < pa.Count; i++)//pa 意思是card 种类
+            {
+                foreach (string item in ((IDictionary)(pa[i])).Keys)//key意思是 card的每个属性
+                {
+                    LitJson.JsonData data = pa[i];
+                    if (item == "name")
+                    {
+                        cardNames.Add((string)data[item]);
+                    }
+
+                }
+            }
+            network.RPC("InitCards", RPCMode.AllBuffered, LitJson.JsonMapper.ToJson(cardNames));
+        }
+
+
+
         if (Network.isServer)
         {
             mainMenuButton.SetActive(true);
 
+
             Random.seed = System.Environment.TickCount;
-            for (int i = 0; i < startCardCount; i++)
+            pileCards.Clear();
+            for (int i = 0; i < cardNames.Count; i++)
             {
-                if (pileCards.Count <= 0)
-                {
-                    break;
-                }
+                pileCards.Add(i);
+            }
+            for (int i = 0; i < cardConfig.startCardCount; i++)
+            {
+
                 for (int j = 0; j < Network.connections.Length + 1; j++)
                 {
-                    if (pileCards.Count <= 0)
+                    if (pileCards.Count > 0)
                     {
-                        break;
+                        int index = Random.Range(0, pileCards.Count);
+                        if (j == Network.connections.Length)
+                        {
+                            ActionSendCard(Network.player, pileCards[index]);
+                            pileCards.RemoveAt(index);
+                        }
+                        else
+                        {
+                            network.RPC("ActionSendCard", RPCMode.Others, Network.connections[j], pileCards[index]);
+                            pileCards.RemoveAt(index);
+                        }
                     }
-                    int index = Random.Range(0, pileCards.Count);
-                    if (j == Network.connections.Length)
-                    {
-                        ActionSendOneCard(Network.player, pileCards[index]);
-                        pileCards.RemoveAt(index);
-                    }
-                    else
-                    {
-                        network.RPC("ActionSendOneCard", RPCMode.Others, Network.connections[j], pileCards[index]);
-                        pileCards.RemoveAt(index);
-                    }
-
-
                 }
             }
+
         }
 
 
@@ -113,26 +150,40 @@ public class GameManager : MonoBehaviour
     {
         Random.seed = seed;
     }
+    /// <summary>
+    /// all client run
+    /// </summary>
+    /// <param name="player"></param>
+    /// <param name="pileIndex"></param>
     [RPC]
-    void ActionSendOneCard(NetworkPlayer player, int pileIndex)
+    void ActionSendCard(NetworkPlayer player, int pileIndex)
     {
 
         if (player == Network.player)
         {
             Debug.Log("card: " + pileIndex);
-           
+
             GameObject go = GameObject.Instantiate(cardPrefab) as GameObject;
             go.GetComponentInChildren<Text>().text = cardNames[pileIndex];
             go.GetComponent<CardAttribute>().index = pileIndex;
             go.transform.SetParent(handCardGrid.transform, false);
         }
     }
+    /// <summary>
+    /// all client run
+    /// </summary>
+    /// <param name="player"></param>
+    /// <param name="json"></param>
     [RPC]
     void ActionOutCard(NetworkPlayer player, string json)
     {
         Debug.Log("ActionOutCard");
         List<int> outCards = LitJson.JsonMapper.ToObject<List<int>>(json);
-        Debug.Log("outCards "+outCards.Count);
+        for (int i = 0; i < outCards.Count; i++)
+        {
+            outCardsHeap.Add(outCards[i]);
+        }
+        Debug.Log("outCards " + outCards.Count);
         if (player == Network.player)
         {
             //selection out 
@@ -151,13 +202,13 @@ public class GameManager : MonoBehaviour
             }
         }
         {
-            while (outCardGrid.transform.childCount>0)
+            while (outCardGrid.transform.childCount > 0)
             {
                 Transform t = outCardGrid.transform.GetChild(0);
                 t.SetParent(null, false);
                 Destroy(t.gameObject);
             }
-            
+
         }
         {
             for (int i = 0; i < outCards.Count; i++)
@@ -169,16 +220,49 @@ public class GameManager : MonoBehaviour
             }
         }
     }
+    /// <summary>
+    /// server run
+    /// </summary>
+    /// <param name="player"></param>
     [RPC]
-    void RequestSendOneCard(NetworkPlayer player)
+    void RequestSendCard(NetworkPlayer player)
     {
-        if (pileCards.Count > 0)
+        for (int k = 0; k < cardConfig.sendCardCount; k++)
         {
-            int index = Random.Range(0, pileCards.Count);
-            network.RPC("ActionSendOneCard", RPCMode.All, player, pileCards[index]);
-            pileCards.RemoveAt(index);
+            if (pileCards.Count > 0)
+            {
+                int index = Random.Range(0, pileCards.Count);
+                network.RPC("ActionSendCard", RPCMode.All, player, pileCards[index]);
+                pileCards.RemoveAt(index);
+            }
+            else if (cardConfig.circulation)
+            {
+
+                while (outCardsHeap.Count>0)
+                {
+                    int index = Random.Range(0, outCardsHeap.Count);
+                    pileCards.Add(outCardsHeap[index]);
+                    outCardsHeap.RemoveAt(index);
+                }
+                if (pileCards.Count>0)
+                {
+                    k--;
+                }
+                else
+                {
+                    Debug.Log("no out cards.");
+                }
+            }
         }
+            
+        
     }
+    
+    /// <summary>
+    /// server run
+    /// </summary>
+    /// <param name="player"></param>
+    /// <param name="json"></param>
     [RPC]
     void RequestOutCard(NetworkPlayer player, string json)
     {
@@ -190,16 +274,13 @@ public class GameManager : MonoBehaviour
     {
         if (Network.isServer)
         {
-            if (pileCards.Count > 0)
-            {
-                int index = Random.Range(0, pileCards.Count);
-                network.RPC("ActionSendOneCard", RPCMode.All, Network.player, pileCards[index]);
-                pileCards.RemoveAt(index);
-            }
+            //如果只有server自己一个，server 是不能发送给server的，所以这里实现
+
+            RequestSendCard(Network.player);
         }
         else
         {
-            network.RPC("RequestSendOneCard", RPCMode.Server, Network.player);
+            network.RPC("RequestSendCard", RPCMode.Server, Network.player);
         }
 
     }
@@ -213,14 +294,14 @@ public class GameManager : MonoBehaviour
             {
                 outCards.Add(handCardGrid.transform.GetChild(i).GetComponent<CardAttribute>().index);
             }
-            
+
         }
         Debug.Log("OnClickOutCardButton");
         string json = LitJson.JsonMapper.ToJson(outCards);
         Debug.Log(json);
         if (Network.isServer)
         {
-            network.RPC("ActionOutCard", RPCMode.All, Network.player, json);
+            RequestOutCard(Network.player, json);
         }
         else
         {

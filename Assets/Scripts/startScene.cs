@@ -15,39 +15,58 @@ using UnityEngine;
 using System.Collections;
 using UnityEngine.UI;
 using System.IO;
+using NPOI.HSSF.UserModel;
+using NPOI.SS.UserModel;
+using System.Collections.Generic;
+using UnityEngine.EventSystems;
 public class startScene : MonoBehaviour {
 
 	public GameObject canvas;
-	public GameObject beginButton;
+    public GameObject setting;
+    public GameObject ipComponent;
 	public Text text;
-
+    EventSystem es;
     FileBrowser fb;
-    string jsonFilePath = "";
+    string excelPath = "";
+    void Awake()
+    {
+        Toggle toggle = GameObject.Find("circulation").GetComponent<Toggle>();
+        toggle.isOn = CardData.instance.circulation;
+    }
 	void Start()
 	{
+        es = EventSystem.current;
 		switch (Network.peerType) {
 		case NetworkPeerType.Server:
+                ipComponent.GetComponent<Text>().text = "IP: " + Network.player.ipAddress;
 			break;
 		case NetworkPeerType.Client:
-			beginButton.SetActive(false);
+            ipComponent.SetActive(false);
+            setting.SetActive(false);
 			break;
 		}
 	}
+    public void SetCardDataCirculation(Toggle toggle)
+    {
+        CardData.instance.circulation = toggle.isOn;
+    }
 
     public GUISkin[] skins;
     public Texture2D file, folder, back, drive;
 
     public void LoadJson()
     {
-        
+        es.enabled = false;
 
-        fb = new FileBrowser();
+
+        fb = new FileBrowser(Directory.GetCurrentDirectory());
         fb.guiSkin = skins[0]; //set the starting skin
         //set the various textures
         fb.fileTexture = file;
         fb.directoryTexture = folder;
         fb.backTexture = back;
         fb.driveTexture = drive;
+        fb.searchPattern = "*.xls";
         //show the search bar
         fb.showSearch = false;
         //search recursively (setting recursive search may cause a long delay)
@@ -57,28 +76,85 @@ public class startScene : MonoBehaviour {
 
     void AnylizeJsonFile(string path)
     {
-        if (Path.GetFileName(jsonFilePath).Contains(".json"))
+        if (Path.GetFileName(excelPath).Contains(".xls"))
         {
-            FileInfo jsonFile = new FileInfo(jsonFilePath);
-            StreamReader sr = new StreamReader(jsonFile.OpenRead());
-            string buffDate = sr.ReadLine();
-            sr.Close();
-
-            LitJson.JsonData arguments = LitJson.JsonMapper.ToObject(buffDate);
-            if (arguments["buff"].IsArray)
+            string excelPathWithoutExtension = Path.GetFileNameWithoutExtension(excelPath) + "-copy.xls";
+            excelPathWithoutExtension = Path.GetDirectoryName(excelPath) + "/" + excelPathWithoutExtension;
+      
+            File.Copy(excelPath, excelPathWithoutExtension, true);
+            
+            FileStream stream = File.Open(excelPathWithoutExtension, FileMode.Open, FileAccess.Read);
+            Debug.Log("===================");
+            HSSFWorkbook wk = new HSSFWorkbook(stream);
+            stream.Close();
+            File.Delete(excelPathWithoutExtension);
+            Debug.Log("===================");
+            ISheet sheet = wk.GetSheetAt(0);
+            Debug.Log("===================");
+            Debug.Log("Rows count " + sheet.LastRowNum);
+            LitJson.JsonData result = new LitJson.JsonData();
+            result["attribute"] = new LitJson.JsonData();
+            List<string> keyName = new List<string>();
+            for (int j = 0; j < sheet.LastRowNum; j++)
             {
-                LitJson.JsonData pa = arguments["buff"];
-                for (int i = 0; i < pa.Count; i++)
+               
+                    if (j == 0)
+                    {
+                        for (int i = 0; i < sheet.GetRow(0).LastCellNum; i++)
+                        {
+                            ICell cell = sheet.GetRow(0).GetCell(i);
+                            if (cell != null)
+                            {
+                                keyName.Add(cell.ToString());
+                            }
+                            else
+                            {
+                                keyName.Add("");
+                            }
+
+                        }
+                    }
+                    else
+                    {
+                        LitJson.JsonData childJ = new LitJson.JsonData();
+                        for (int i = 0; i < keyName.Count; i++)
+                        {
+                            ICell cell = sheet.GetRow(j).GetCell(i);
+                            if (cell != null)
+                            {
+                                childJ[keyName[i]] = cell.ToString();
+                            }
+                            else
+                            {
+                                childJ[keyName[i]] = null;
+                            }
+
+                        }
+
+                        result["attribute"].Add(childJ);
+                    }
+                
+            }
+
+            if (result["attribute"].IsArray)
+            {
+                LitJson.JsonData pa = result["attribute"];
+                if (CardData.instance)
                 {
-                    foreach (string col in ((IDictionary)(pa[i])).Keys)
+                    CardData.instance.cardJsonData = pa;
+                }
+                for (int i = 0; i < pa.Count; i++)//pa 意思是card 种类
+                {
+                    foreach (string item in ((IDictionary)(pa[i])).Keys)//key意思是 card的每个属性
                     {
                         LitJson.JsonData data = pa[i];
-                        Debug.Log(col + " " + data[col]);
+                        //Debug.Log(item + " " + data[item]);
                     }
-
+                    //Debug.Log("==================");
 
                 }
             }
+    
         }
         
     }
@@ -89,13 +165,22 @@ public class startScene : MonoBehaviour {
      
             if (fb.draw())
             {
-                jsonFilePath = fb.outputFile.ToString();
-                AnylizeJsonFile(jsonFilePath);
+                if (fb.outputFile!=null)
+                {
+
+                    excelPath = fb.outputFile.Directory.FullName+"/"+fb.outputFile.Name;
+                 
+                    Debug.Log(excelPath);
+                    AnylizeJsonFile(excelPath);                    
+                   
+                }
                 fb = null;
+                es.enabled = true;
             }
             
         }
     }
+
 	void Update()
 	{
       
