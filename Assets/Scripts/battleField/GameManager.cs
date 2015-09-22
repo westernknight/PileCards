@@ -31,8 +31,10 @@ public class GameManager : MonoBehaviour
     GameObject outCardGrid;
 
     GameObject mainMenuButton;
-
+ 
     CardData cardConfig;
+
+    
     void Awake()
     {
         instance = this;
@@ -82,28 +84,33 @@ public class GameManager : MonoBehaviour
         mainMenuButton = GameObject.Find("mainMenuButton");
         handCardGrid = GameObject.Find("handCardGrid");
         outCardGrid = GameObject.Find("outCardGrid");
+        
         mainMenuButton.SetActive(false);
 
-        if (CardData.instance.cardJsonData != null)
+        if (CardData.instance)
         {
-            cardNames.Clear();
-            Debug.Log("load cards");
-            LitJson.JsonData pa = CardData.instance.cardJsonData;
-
-            for (int i = 0; i < pa.Count; i++)//pa 意思是card 种类
+            if (CardData.instance.cardJsonData != null)
             {
-                foreach (string item in ((IDictionary)(pa[i])).Keys)//key意思是 card的每个属性
-                {
-                    LitJson.JsonData data = pa[i];
-                    if (item == "name")
-                    {
-                        cardNames.Add((string)data[item]);
-                    }
+                cardNames.Clear();
+                Debug.Log("load cards");
+                LitJson.JsonData pa = CardData.instance.cardJsonData;
 
+                for (int i = 0; i < pa.Count; i++)//pa 意思是card 种类
+                {
+                    foreach (string item in ((IDictionary)(pa[i])).Keys)//key意思是 card的每个属性
+                    {
+                        LitJson.JsonData data = pa[i];
+                        if (item == "name")
+                        {
+                            cardNames.Add((string)data[item]);
+                        }
+
+                    }
                 }
+                network.RPC("InitCards", RPCMode.AllBuffered, LitJson.JsonMapper.ToJson(cardNames));
             }
-            network.RPC("InitCards", RPCMode.AllBuffered, LitJson.JsonMapper.ToJson(cardNames));
         }
+        
 
 
 
@@ -145,6 +152,7 @@ public class GameManager : MonoBehaviour
 
 
     }
+    
     [RPC]
     void RandomNumber(int seed)
     {
@@ -161,7 +169,7 @@ public class GameManager : MonoBehaviour
 
         if (player == Network.player)
         {
-            Debug.Log("card: " + pileIndex);
+            //Debug.Log("card: " + pileIndex);
 
             GameObject go = GameObject.Instantiate(cardPrefab) as GameObject;
             go.GetComponentInChildren<Text>().text = cardNames[pileIndex];
@@ -177,13 +185,13 @@ public class GameManager : MonoBehaviour
     [RPC]
     void ActionOutCard(NetworkPlayer player, string json)
     {
-        Debug.Log("ActionOutCard");
+       // Debug.Log("ActionOutCard");
         List<int> outCards = LitJson.JsonMapper.ToObject<List<int>>(json);
         for (int i = 0; i < outCards.Count; i++)
         {
             outCardsHeap.Add(outCards[i]);
         }
-        Debug.Log("outCards " + outCards.Count);
+        //Debug.Log("outCards " + outCards.Count);
         if (player == Network.player)
         {
             //selection out 
@@ -266,8 +274,8 @@ public class GameManager : MonoBehaviour
     [RPC]
     void RequestOutCard(NetworkPlayer player, string json)
     {
-        Debug.Log(json);
-        Debug.Log("RequestOutCard");
+        //Debug.Log(json);
+        //Debug.Log("RequestOutCard");
         network.RPC("ActionOutCard", RPCMode.All, player, json);
     }
     public void OnClickGetCardButton()
@@ -296,9 +304,9 @@ public class GameManager : MonoBehaviour
             }
 
         }
-        Debug.Log("OnClickOutCardButton");
+        //Debug.Log("OnClickOutCardButton");
         string json = LitJson.JsonMapper.ToJson(outCards);
-        Debug.Log(json);
+        //Debug.Log(json);
         if (Network.isServer)
         {
             RequestOutCard(Network.player, json);

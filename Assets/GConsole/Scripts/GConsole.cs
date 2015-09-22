@@ -60,6 +60,7 @@ public class GConsole : MonoBehaviour
     {
         instance = this;
         DontDestroyOnLoad(this);
+        commands.Clear();
     }
 
     void Start()

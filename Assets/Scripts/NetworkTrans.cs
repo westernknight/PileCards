@@ -22,6 +22,8 @@ public class NetworkTrans : MonoBehaviour {
 	private string serverIP = "127.0.0.1";
 	int lastLevelPrefix = 0;
 	public string loadSceneName;//asyn load scene offer name
+    bool showConsolePanel = false;
+    GameObject consolePanelObject;
 	void Awake()
 	{
 		instance = this;
@@ -32,7 +34,8 @@ public class NetworkTrans : MonoBehaviour {
 	{
 		network = GetComponent<NetworkView>();
 		DontDestroyOnLoad(gameObject);
-
+        consolePanelObject = GameObject.Find("consolePanel");
+        consolePanelObject.GetComponent<RectTransform>().anchoredPosition = new Vector3(0, 160);
 	}
     
 	public void StartServer()
@@ -142,7 +145,18 @@ public class NetworkTrans : MonoBehaviour {
 			break;
 		}
 	}
-
+    public void ConsoleButtonOnClick()
+    {
+        showConsolePanel = !showConsolePanel;
+        if (showConsolePanel)
+        {
+            consolePanelObject.GetComponent<RectTransform>().anchoredPosition = new Vector3(0, 0);
+        }
+        else
+        {
+            consolePanelObject.GetComponent<RectTransform>().anchoredPosition = new Vector3(0, 160);
+        }
+    }
 	void OnDisconnectedFromServer()
 	{
 		Time.timeScale = 1;

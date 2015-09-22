@@ -22,7 +22,7 @@ using UnityEngine.EventSystems;
 public class startScene : MonoBehaviour {
 
 	public GameObject canvas;
-    public GameObject setting;
+
     public GameObject ipComponent;
 	public Text text;
     EventSystem es;
@@ -39,10 +39,16 @@ public class startScene : MonoBehaviour {
 		switch (Network.peerType) {
 		case NetworkPeerType.Server:
                 ipComponent.GetComponent<Text>().text = "IP: " + Network.player.ipAddress;
+                
 			break;
 		case NetworkPeerType.Client:
             ipComponent.SetActive(false);
-            setting.SetActive(false);
+    
+            GameObject.Find("circulation").SetActive(false);
+            GameObject.Find("LoadExcel").SetActive(false);
+            GameObject.Find("BeginButton").SetActive(false);
+            GameObject.Find("sendCardCountInputField").SetActive(false);
+                 GameObject.Find("initCardCountInputField").SetActive(false);
 			break;
 		}
 	}
@@ -54,7 +60,7 @@ public class startScene : MonoBehaviour {
     public GUISkin[] skins;
     public Texture2D file, folder, back, drive;
 
-    public void LoadJson()
+    public void LoadExcel()
     {
         es.enabled = false;
 
@@ -189,6 +195,8 @@ public class startScene : MonoBehaviour {
 	}
 	public void StartBattleScene()
 	{
+        CardData.instance.startCardCount = int.Parse(GameObject.Find("initCardCountInputField").GetComponent<InputField>().text);
+        CardData.instance.sendCardCount = int.Parse(GameObject.Find("sendCardCountInputField").GetComponent<InputField>().text);
 		NetworkTrans.instance.UserLoadLevel ("a0");
 	}
 }

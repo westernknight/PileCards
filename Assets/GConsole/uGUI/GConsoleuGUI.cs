@@ -18,6 +18,7 @@ public class GConsoleuGUI : MonoBehaviour
 
 	void Start ()
 	{
+        DontDestroyOnLoad(gameObject);
 		GConsole.OnOutput += OnOutput;	//Register the "OnOutput" method as a listener for console output.
 		input.GetComponent<GConsoleuGUIInput> ().uGUI = this;
 		foreach(GConsoleuGUISuggestion sugg in suggestions) {
@@ -27,7 +28,7 @@ public class GConsoleuGUI : MonoBehaviour
 
 	void OnEnable ()
 	{
-		input.Select ();
+		//input.Select ();
 		input.ActivateInputField ();
 	}
 
