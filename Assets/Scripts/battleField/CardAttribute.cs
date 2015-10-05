@@ -19,6 +19,7 @@ public class CardAttribute : MonoBehaviour {
 
     public int index;
     public bool selected;
+    public Card card;
     /// <summary>
     /// child 
     /// </summary>

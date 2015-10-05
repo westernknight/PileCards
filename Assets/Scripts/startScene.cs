@@ -127,7 +127,7 @@ public class startScene : MonoBehaviour {
                         {
                             ICell cell = sheet.GetRow(j).GetCell(i);
                             if (cell != null)
-                            {
+                            {          
                                 childJ[keyName[i]] = cell.ToString();
                             }
                             else
@@ -197,6 +197,13 @@ public class startScene : MonoBehaviour {
 	{
         CardData.instance.startCardCount = int.Parse(GameObject.Find("initCardCountInputField").GetComponent<InputField>().text);
         CardData.instance.sendCardCount = int.Parse(GameObject.Find("sendCardCountInputField").GetComponent<InputField>().text);
-		NetworkTrans.instance.UserLoadLevel ("a0");
+        if (NetworkTrans.instance)
+        {
+            NetworkTrans.instance.UserLoadLevel("a0");
+        }
+		else
+        {
+            Application.LoadLevel("a0");
+        }
 	}
 }

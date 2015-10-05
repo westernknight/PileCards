@@ -13,6 +13,7 @@
 
 using UnityEngine;
 using System.Collections;
+using UnityEngine.UI;
 
 public class NetworkTrans : MonoBehaviour {
 
@@ -44,9 +45,9 @@ public class NetworkTrans : MonoBehaviour {
 		Debug.Log("server status: " + error);
 		Application.LoadLevel("zjj_startScene");
 	}
-	public void StartConnect()
+	public void StartConnect(InputField field)
 	{
-		NetworkConnectionError error = Network.Connect(serverIP, serverPort);
+        NetworkConnectionError error = Network.Connect(field.text, serverPort);
 		Debug.Log("connect status: " + error);
 		if (error == NetworkConnectionError.NoError)
 		{

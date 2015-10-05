@@ -16,11 +16,26 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine.UI;
 
+public class Card
+{
+    public string name;
+    public string weight="";
+    public string style="";
+    public Card(string name)
+    {
+        this.name = name;
+        weight = name;  
+    }
+    public Card()
+    {
+
+    }
+}
 public class GameManager : MonoBehaviour
 {
-
+    
     NetworkView network;
-    List<string> cardNames = new List<string>();
+    List<Card> cardNames = new List<Card>();
     List<int> pileCards = new List<int>();
     List<int> outCardsHeap = new List<int>();
 
@@ -40,25 +55,25 @@ public class GameManager : MonoBehaviour
         instance = this;
 
         //demo
-        cardNames.Add("a1");
-        cardNames.Add("a2");
-        cardNames.Add("a3");
-        cardNames.Add("a4");
-        cardNames.Add("a5");
-        cardNames.Add("a6");
-        cardNames.Add("a7");
-        cardNames.Add("a8");
-        cardNames.Add("a9");
-
-        cardNames.Add("b1");
-        cardNames.Add("b2");
-        cardNames.Add("b3");
-        cardNames.Add("b4");
-        cardNames.Add("b5");
-        cardNames.Add("b6");
-        cardNames.Add("b7");
-        cardNames.Add("b8");
-        cardNames.Add("b9");
+        cardNames.Add(new Card("a1"));
+        cardNames.Add(new Card("a2"));
+        cardNames.Add(new Card("a3"));
+        cardNames.Add(new Card("a4"));
+        cardNames.Add(new Card("a5"));
+        cardNames.Add(new Card("a6"));
+        cardNames.Add(new Card("a7"));
+        cardNames.Add(new Card("a8"));
+        cardNames.Add(new Card("a9"));
+                    
+        cardNames.Add(new Card("b1"));
+        cardNames.Add(new Card("b2"));
+        cardNames.Add(new Card("b3"));
+        cardNames.Add(new Card("b4"));
+        cardNames.Add(new Card("b5"));
+        cardNames.Add(new Card("b6"));
+        cardNames.Add(new Card("b7"));
+        cardNames.Add(new Card("b8"));
+        cardNames.Add(new Card("b9"));
 
         cardConfig = CardData.instance;
 
@@ -67,7 +82,7 @@ public class GameManager : MonoBehaviour
     void InitCards(string json)
     {
         cardNames.Clear();
-        cardNames = LitJson.JsonMapper.ToObject<List<string>>(json);
+        cardNames = LitJson.JsonMapper.ToObject<List<Card>>(json);
 
     }
 
@@ -97,15 +112,24 @@ public class GameManager : MonoBehaviour
 
                 for (int i = 0; i < pa.Count; i++)//pa 意思是card 种类
                 {
+                    Card card = new Card();
                     foreach (string item in ((IDictionary)(pa[i])).Keys)//key意思是 card的每个属性
                     {
                         LitJson.JsonData data = pa[i];
                         if (item == "name")
                         {
-                            cardNames.Add((string)data[item]);
+                            card.name = data[item].ToString();
                         }
-
+                        else if (item == "weight")
+                        {
+                            card.weight = data[item].ToString();
+                        }
+                        else if (item == "style")
+                        {
+                            card.style = data[item].ToString();
+                        }
                     }
+                    cardNames.Add(card);
                 }
                 network.RPC("InitCards", RPCMode.AllBuffered, LitJson.JsonMapper.ToJson(cardNames));
             }
@@ -172,10 +196,12 @@ public class GameManager : MonoBehaviour
             //Debug.Log("card: " + pileIndex);
 
             GameObject go = GameObject.Instantiate(cardPrefab) as GameObject;
-            go.GetComponentInChildren<Text>().text = cardNames[pileIndex];
+            go.GetComponentInChildren<Text>().text = cardNames[pileIndex].name;
             go.GetComponent<CardAttribute>().index = pileIndex;
+            go.GetComponent<CardAttribute>().card = cardNames[pileIndex];
             go.transform.SetParent(handCardGrid.transform, false);
         }
+        Debug.Log(player + " Get Card");
     }
     /// <summary>
     /// all client run
@@ -209,6 +235,11 @@ public class GameManager : MonoBehaviour
                 }
             }
         }
+
+        
+
+
+
         {
             while (outCardGrid.transform.childCount > 0)
             {
@@ -222,8 +253,8 @@ public class GameManager : MonoBehaviour
             for (int i = 0; i < outCards.Count; i++)
             {
                 GameObject go = GameObject.Instantiate(cardPrefab) as GameObject;
-                go.GetComponentInChildren<Text>().text = cardNames[outCards[i]];
-                go.GetComponent<CardAttribute>().index = outCards[i];
+                go.GetComponentInChildren<Text>().text = cardNames[outCards[i]].name;
+                Debug.Log(player + " Out Card " + cardNames[outCards[i]].name);
                 go.transform.SetParent(outCardGrid.transform, false);
             }
         }
@@ -291,6 +322,40 @@ public class GameManager : MonoBehaviour
             network.RPC("RequestSendCard", RPCMode.Server, Network.player);
         }
 
+    }
+    public int sortStyle = 0;
+    public void OnClickSortCardButton()
+    {
+        List<CardAttribute> list = new List<CardAttribute>();
+        for (int i = 0; i < handCardGrid.transform.childCount; i++)
+        {
+            list.Add(handCardGrid.transform.GetChild(i).GetComponent<CardAttribute>());
+        }
+        foreach (var item in list)
+        {
+            item.transform.SetParent(null);
+        }
+
+        list.Sort((left, right) =>
+        {
+            if (string.Compare(left.card.weight, right.card.weight) == 0)
+            {
+                return 0;
+            }
+            else if (string.Compare(left.card.weight, right.card.weight) > 0)
+            {
+                return 1;
+            }
+            else
+            {
+                return -1;
+            }
+
+        });
+        for (int i = 0; i < list.Count; i++)
+        {
+            list[i].transform.SetParent(handCardGrid.transform, false);
+        }
     }
     public void OnClickOutCardButton()
     {
